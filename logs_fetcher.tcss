@@ -46,6 +46,10 @@
     border: solid green;
 }
 
+#ssh_inputs_container {
+    border: solid rgb(101, 39, 202);
+}
+
 #copy_from_localhost_label {
     grid-columns: 2;
     grid-rows: 1;
