@@ -1,0 +1,58 @@
+#main-container {
+    height: 100%;
+    width: 100%;
+    grid-size: 2;  /* two columns */
+}
+
+#dates {
+    grid-size: 2;  /* two columns */
+}
+
+#from_date_label {
+    grid-columns: 2;
+    grid-rows: 1;
+}
+
+#to_date_label {
+    grid-columns: 2;
+    grid-rows: 2;
+}
+
+.datetime_input {
+    width: 100%;
+}
+
+#ssh_settings {
+    column-span: 3;
+}
+
+#slow_mode_label {
+    /* content-align: center middle; */
+}
+
+#add_path_btn{
+    /* column: 2; */
+}
+
+#copy_btn {
+    column-span: 1;
+    grid-columns: 2;
+    /* justify-self: end;
+    align-self: center; */
+}
+
+.panel {
+    height: 100%;
+    border: solid green;
+}
+
+#copy_from_localhost_label {
+    grid-columns: 2;
+    grid-rows: 1;
+}
+
+#copy_from_localhost {
+    grid-columns: 2;
+    grid-rows: 2;
+}
+
