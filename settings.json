@@ -1,0 +1,12 @@
+{
+    "slow_mode": false,
+    "copy_from_local": true,
+    "debud_level": "WARNING",
+    "log_file_path": "logs/app.log",
+    "ssh_settings" :{
+        "hostname": "example.com",
+        "port": 22,
+        "username": "user",
+        "password": "password"
+    }
+}
