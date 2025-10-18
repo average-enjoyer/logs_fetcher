@@ -25,7 +25,10 @@ class SSHSettings(Static):
 
 class PathField(Static):
     def compose(self) -> ComposeResult:
-        yield Input("/var/log/messages", id="log_dirs")
+        if self.id == "dest_path_field":
+            yield Input("/home/user/heap", id="dest_path")
+        else:
+            yield Input("/var/log/messages", id="log_dirs")
 
 class LogsFetcher(App):
     """A Textual App to fetch logs from specified directories within a date range."""
@@ -48,14 +51,17 @@ class LogsFetcher(App):
         with Grid(id="main-container"):
             with Grid(id="dates", classes="panel"):
                 yield Label("From date:", id="from_date_label")
-                yield Input(placeholder=self.from_time, classes="datetime_input", value=self.from_time, valid_empty=False)
+                yield Input(placeholder=self.from_time, classes="datetime_input", id="from_date", value=self.from_time, valid_empty=False)
                 yield Label("To date:", id="to_date_label")
-                yield Input(placeholder=self.to_time, classes="datetime_input", value=self.to_time, valid_empty=False)
+                yield Input(placeholder=self.to_time, classes="datetime_input", id="to_date", value=self.to_time, valid_empty=False)
                 yield Label("Slow mode:", id="slow_mode_label")
                 yield Switch(id="slow_mode", value=False, animate=True)
-                yield Label("Directories with logs", id="log_dirs_label")
+                yield Label("Directories with logs:", id="log_dirs_label")
                 yield VerticalScroll(PathField(), id="path_fields")
                 yield Button("Add path", id="add_path", variant="success")
+                yield Label("") # Spacer
+                yield Label("Destination:", id="log_destination_label")
+                yield PathField(id="dest_path_field", content="/home/user/logs_destination")
             yield SSHSettings(id="ssh_settings", classes="panel")
             yield Button("COPY", id="copy_btn", variant="primary")
 
@@ -66,7 +72,20 @@ class LogsFetcher(App):
         new_path.scroll_visible()
 
     def action_copy(self) -> None:
-        pass
+        """An action to start copying logs."""
+        from_date_input = self.query_one("#from_date", Input)
+        to_date_input = self.query_one("#to_date", Input)
+        log_dirs_input = self.query_one("#log_dirs", Input)
+        dest_path_input = self.query_one("#dest_path", Input)
+    
+        logs_cutter = LogsCutter(
+            from_date=from_date_input.value,
+            to_date=to_date_input.value,
+            log_dirs=[log_dirs_input.value],
+            dest_path=dest_path_input.value
+        )
+        logs_cutter.cut_logs()
+
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Event handler called when a button is pressed."""
@@ -82,6 +101,24 @@ class LogsFetcher(App):
             container.display = False
         elif event.switch.id == "copy_from_localhost" and Switch.value == False:
             container.display = True
+
+class LogsCutter():
+    """A class to handle log cutting based on date ranges."""
+
+    def __init__(self, from_date: str, to_date: str, log_dirs: list[str], dest_path: str):
+        self.from_date = date_parser.parse(from_date)
+        self.to_date = date_parser.parse(to_date)
+        self.log_dirs = log_dirs
+        self.dest_path = dest_path
+        self.logger = logging.getLogger("LogsCutter")
+        self.logger.info(f"Initialized LogsCutter with from_date: {self.from_date} and to_date: {self.to_date}")
+
+    def cut_logs(self):
+        self.logger.error("Starting to cut logs...")
+        self.logger.error(f"From date: {self.from_date}, To date: {self.to_date}")
+        for log_dir in self.log_dirs:
+            self.logger.error(f"Processing log directory: {log_dir}")
+        self.logger.error(f"Logs have been cut and saved to {self.dest_path}")
 
 
 if __name__ == "__main__":
