@@ -1,8 +1,10 @@
 {
     "slow_mode": false,
     "copy_from_local": true,
-    "debud_level": "WARNING",
-    "log_file_path": "logs/app.log",
+    "debug_level": "DEBUG",
+    "logs_fetcher_log_file_path": "logs/app.log",
+    "log_file_path": "examples/program.log",
+    "dest_path": "destination/",
     "ssh_settings" :{
         "hostname": "example.com",
         "port": 22,
