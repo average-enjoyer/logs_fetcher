@@ -19,15 +19,16 @@ dates = [
 
 class SSHSettings(Static):
     configs = Config().configs
+    ssh_settings = configs.get("ssh_settings", {})
     def compose(self) -> ComposeResult:
         yield Label("Copy from localhost:", id="copy_from_localhost_label")
         yield Switch(id="copy_from_localhost", value=self.configs.get("copy_from_local", True), animate=True)
 
         with Container(id="ssh_inputs_container"):
             yield Label("SSH Settings")
-            yield Input(placeholder="Host IP", id="host_ip", valid_empty=False)
-            yield Input(placeholder="Username", id="username", valid_empty=False)
-            yield Input(placeholder="Password", password=True, id="password", valid_empty=False)
+            yield Input(placeholder="Host:port", id="host_ip", value=f"{self.ssh_settings.get('hostname', '')}:{self.ssh_settings.get('port', '')}", valid_empty=False)
+            yield Input(placeholder="Username", id="username", value=self.ssh_settings.get("username", ""), valid_empty=False)
+            yield Input(placeholder="Password", password=True, value=self.ssh_settings.get("password", ""), id="password", valid_empty=False)
 
     def on_mount(self) -> None:
         container = self.query_one("#ssh_inputs_container", Container)
