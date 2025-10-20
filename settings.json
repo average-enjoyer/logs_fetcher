@@ -3,8 +3,8 @@
     "copy_from_local": true,
     "debug_level": "DEBUG",
     "logs_fetcher_log_file_path": "logs/app.log",
-    "log_file_path": "examples/program.log",
-    "dest_path": "destination/",
+    "log_file_path": "examples/Linux_2k.log",
+    "dest_path": "res/",
     "ssh_settings" :{
         "hostname": "example.com",
         "port": 22,

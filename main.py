@@ -1,20 +1,12 @@
 import logging
-import json
 from Config import Config
 from typing import cast
-from dateutil import parser as date_parser
 from datetime import datetime, timedelta
 from textual.app import App, ComposeResult
 from textual.containers import Grid, Container, VerticalScroll
 from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button
 
-# Example date strings to parse
-dates = [
-    "2024-10-09 15:30:45",
-    "Oct 9, 2024 3:30 PM", 
-    "09/10/2024 15:30:45",
-    "2024-10-09T15:30:45.123Z"
-]
+from LogsCutter import LogsCutter
 
 
 class SSHSettings(Static):
@@ -40,7 +32,7 @@ class PathField(Static):
         if self.id == "dest_path_field":
             yield Input(self.configs.get("dest_path", "/home/user/heap"), id="dest_path")
         else:
-            yield Input(self.configs.get("log_file_path", "/var/log/messages"), id="log_dirs")
+            yield Input(self.configs.get("log_file_path", "/var/log/messages"), id="log_files")
 
 class LogsFetcher(App):
     """A Textual App to fetch logs from specified directories within a date range."""
@@ -72,7 +64,7 @@ class LogsFetcher(App):
                 yield Input(placeholder=self.to_time, classes="datetime_input", id="to_date", value=self.to_time, valid_empty=False)
                 yield Label("Slow mode:", id="slow_mode_label")
                 yield Switch(id="slow_mode", value=self.configs.get("slow_mode", False), animate=True)
-                yield Label("Directories with logs:", id="log_dirs_label")
+                yield Label("Directories with logs:", id="log_files_label")
                 yield VerticalScroll(PathField(), id="path_fields")
                 yield Button("Add path", id="add_path", variant="success")
                 yield Label("") # Spacer
@@ -94,13 +86,13 @@ class LogsFetcher(App):
         to_date_input = self.query_one("#to_date", Input)
         # Query for inputs and cast each result to Input so Pylance knows about `.value`
         log_inputs = list(self.query("#path_fields Input"))
-        log_dirs_input = [cast(Input, inp).value for inp in log_inputs]
+        log_files_input = [cast(Input, inp).value for inp in log_inputs]
         dest_path_input = self.query_one("#dest_path", Input)
 
         logs_cutter = LogsCutter(
             from_date=from_date_input.value,
             to_date=to_date_input.value,
-            log_dirs=log_dirs_input,
+            log_files=log_files_input,
             dest_path=dest_path_input.value,
         )
         logs_cutter.cut_logs()
@@ -120,29 +112,6 @@ class LogsFetcher(App):
             container.display = False
         elif event.switch.id == "copy_from_localhost" and event.switch.value is False:
             container.display = True
-
-
-class LogsCutter():
-    """A class to handle log cutting based on date ranges."""
-
-    def __init__(self, from_date: str, to_date: str, log_dirs: list[str], dest_path: str):
-        self.from_date = date_parser.parse(from_date)
-        self.to_date = date_parser.parse(to_date)
-        self.log_dirs = log_dirs
-        self.dest_path = dest_path
-        self.logger = logging.getLogger("LogsCutter")
-        self.logger.debug(f"Initialized LogsCutter with from_date: {self.from_date} and to_date: {self.to_date}")
-
-    def cut_logs(self):
-        self.logger.debug("Starting to cut logs...")
-        self.logger.debug(f"From date: {self.from_date}, To date: {self.to_date}")
-        for log_dir in self.log_dirs:
-            self.logger.debug(f"Processing log directory: {log_dir}")
-        self.logger.debug(f"Logs have been cut and saved to {self.dest_path}")
-        # for log_dir in self.log_dirs:
-        #     with open(log_dir, 'r') as file:
-        #         for line in file:
-        #             pass
 
 
 if __name__ == "__main__":
