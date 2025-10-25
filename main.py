@@ -6,7 +6,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Grid, Container, VerticalScroll
 from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button
 
-from LogsCutter import LogsCutter
+from LogCutter import LogsCutter
 
 
 class SSHSettings(Static):
@@ -95,7 +95,7 @@ class LogsFetcher(App):
             log_files=log_files_input,
             dest_path=dest_path_input.value,
         )
-        logs_cutter.cut_logs()
+        logs_cutter.cut_log()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Event handler called when a button is pressed."""
