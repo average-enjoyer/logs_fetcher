@@ -7,11 +7,11 @@ import logging # debug level is set in main.py
 
 # Example date strings to parse
 dates = [
-    "2024-10-09 15:30:45",
-    "Oct 9, 2024 3:30 PM",
-    "09/10/2024 15:30:45",
-    "2024-10-09T15:30:45.123Z",
-    "2024-10-09 15:30:45.123Z"
+    "2025-10-09 15:30:45",
+    "Oct 9, 2025 3:30 PM",
+    "09/10/2025 15:30:45",
+    "2025-10-09T15:30:45.123Z",
+    "2025-10-09 15:30:45.123Z"
 ]
 
 
@@ -19,8 +19,8 @@ class LogsCutter():
     """A class to handle log cutting based on date ranges."""
 
     def __init__(self, from_date: str, to_date: str, log_files: list[str], dest_path: str):
-        self.from_date = date_parser.parse(from_date)
-        self.to_date = date_parser.parse(to_date)
+        self.from_date = date_parser.parse(from_date, ignoretz=True)
+        self.to_date = date_parser.parse(to_date, ignoretz=True)
         self.log_files = log_files
         self.dest_path = dest_path
         self.logger = logging.getLogger("LogsCutter")
@@ -54,6 +54,16 @@ class LogsCutter():
             end_line_posix = self.find_end_line(lines)
             if start_line_posix is not None and end_line_posix is not None:
                 self.logger.debug(f"Cutting log file from line {start_line_posix} to {end_line_posix}")
+                if end_line_posix < start_line_posix:
+                    self.logger.warning(f"End line {end_line_posix} is before start line {start_line_posix} in file {log_file_path}. Skipping cut.")
+                    return
+                elif start_line_posix == end_line_posix:
+                    self.logger.warning(f"Start and end lines are the same ({start_line_posix}) in file {log_file_path}. Skipping cut.\n"
+                    "It just means no logs found in the specified date range.\n")
+                    return
+                elif end_line_posix == 0:
+                    self.logger.warning(f"End line not found in file {log_file_path}. Skipping cut.")
+                    return
                 cut_lines = lines[start_line_posix:end_line_posix]
                 dest_file_path = os.path.join(self.dest_path, os.path.basename(log_file_path))
                 try:
@@ -85,24 +95,24 @@ class LogsCutter():
             float: POSIX timestamp of the extracted date, or None if no valid date is found.
 
         Supported date formats:
-            - ISO 8601: "2024-10-09 15:30:45", "2024-10-09 15:30:45.123Z"
-            - Human readable: "Oct 9, 2024 3:30 PM"
-            - Date/time: "09/10/2024 15:30:45"
-            - ISO 8601 with T: "2024-10-09T15:30:45.123Z"
+            - ISO 8601: "2025-10-09 15:30:45", "2025-10-09 15:30:45.123Z"
+            - Human readable: "Oct 9, 2025 3:30 PM"
+            - Date/time: "09/10/2025 15:30:45"
+            - ISO 8601 with T: "2025-10-09T15:30:45.123Z"
         """
         # date_patterns may require adding ^ to match at the start of the line only
         date_patterns = [
-            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?Z?",  # 2024-10-09 15:30:45 or with milliseconds and Z
-            r"[A-Za-z]{3} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M",   # Oct 9, 2024 3:30 PM
-            r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}",              # 09/10/2024 15:30:45
-            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?"   # 2024-10-09T15:30:45.123Z
+            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?Z?",  # 2025-10-09 15:30:45 or with milliseconds and Z
+            r"[A-Za-z]{3} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M",   # Oct 9, 2025 3:30 PM
+            r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}",              # 09/10/2025 15:30:45
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?"   # 2025-10-09T15:30:45.123Z
         ]
         for pattern in date_patterns:
             match = re.search(pattern, line)
             if match:
                 date_str = match.group(0)
                 try:
-                    parsed_date = date_parser.parse(date_str)
+                    parsed_date = date_parser.parse(date_str, ignoretz=True)
                     posix_timestamp = parsed_date.timestamp()
                     logging.debug(f"Extracted date '{date_str}' as POSIX timestamp: {posix_timestamp}")
                     return posix_timestamp
