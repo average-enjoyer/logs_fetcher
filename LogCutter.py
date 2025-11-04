@@ -15,72 +15,50 @@ dates = [
 ]
 
 
-class LogsCutter():
+class LogCutter():
     """A class to handle log cutting based on date ranges."""
 
-    def __init__(self, from_date: str, to_date: str, log_files: list[str], dest_path: str):
+    def __init__(self, from_date: str, to_date: str, dest_path: str):
         self.from_date = date_parser.parse(from_date, ignoretz=True)
         self.to_date = date_parser.parse(to_date, ignoretz=True)
-        self.log_files = log_files
         self.dest_path = dest_path
-        self.logger = logging.getLogger("LogsCutter")
-        self.logger.debug(f"Initialized LogsCutter with from_date: {self.from_date} and to_date: {self.to_date}")
+        self.logger = logging.getLogger("LogCutter")
+        self.logger.debug(f"Initialized LogCutter with from_date: {self.from_date} and to_date: {self.to_date}")
 
-    def cut_log(self):
-        self.logger.debug("Starting to cut logs...")
-        self.logger.debug(f"From date: {self.from_date}, To date: {self.to_date}")
-        self.logger.debug(f"Log files: {self.log_files}")
-        for log in self.log_files:
-            if os.path.exists(log):
-                if os.path.isdir(log):
-                    self.logger.debug(f"Processing log directory: {log}")
-                    for logfile in os.listdir(log):
-                        log_path = os.path.join(log, logfile)
-                        if os.path.isfile(log_path):
-                            self.logger.debug(f"Processing log file: {log_path}")
-                            self.cut_log_file(log_path)
-                elif os.path.isfile(log):
-                    self.logger.debug(f"Processing a single log file: {log}")
-                    self.cut_log_file(log)
-            else:
-                self.logger.error(f"Log file or directory does not exist: {log}")
-
-    def cut_log_file(self, log_file_path:str):
+    def cut_log(self, log_file_path:str, lines:list[str]) -> None:
         start_line_posix = 0.0 # POSIX timestamp of the first line to include
         end_line_posix = 0.0 # POSIX timestamp of the last line to include
-        with open(log_file_path, "r") as log_file:
-            lines = log_file.readlines()
-            start_line_posix = self.find_start_line(lines)
-            end_line_posix = self.find_end_line(lines)
-            if start_line_posix is not None and end_line_posix is not None:
-                self.logger.debug(f"Cutting log file from line {start_line_posix} to {end_line_posix}")
-                if end_line_posix < start_line_posix:
-                    self.logger.warning(f"End line {end_line_posix} is before start line {start_line_posix} in file {log_file_path}. Skipping cut.")
-                    return
-                elif start_line_posix == end_line_posix:
-                    self.logger.warning(f"Start and end lines are the same ({start_line_posix}) in file {log_file_path}. Skipping cut.\n"
-                    "It just means no logs found in the specified date range.\n")
-                    return
-                elif end_line_posix == 0:
-                    self.logger.warning(f"End line not found in file {log_file_path}. Skipping cut.")
-                    return
-                cut_lines = lines[start_line_posix:end_line_posix]
-                dest_file_path = os.path.join(self.dest_path, os.path.basename(log_file_path))
-                try:
-                    if not os.path.exists(self.dest_path):
-                        os.makedirs(self.dest_path, exist_ok=True)
-                except OSError as e:
-                        self.logger.error(f"Error creating destination directory {self.dest_path}: {e}")
-                try:
-                    with open(dest_file_path, "w") as dest_file:
-                        dest_file.writelines(cut_lines)
-                except OSError as e:
-                    self.logger.error(f"Error writing to destination file {dest_file_path}: {e}")
-                self.logger.info(f"Cut log saved to: {dest_file_path}")
-            elif start_line_posix is None:
-                self.logger.warning(f"No start line found in log file: {log_file_path}")
-            elif end_line_posix is None:
-                self.logger.warning(f"No end line found in log file: {log_file_path}")
+        start_line_posix = self.find_start_line(lines)
+        end_line_posix = self.find_end_line(lines)
+        if start_line_posix is not None and end_line_posix is not None:
+            self.logger.debug(f"Cutting log file from line {start_line_posix} to {end_line_posix}")
+            if end_line_posix < start_line_posix:
+                self.logger.warning(f"End line {end_line_posix} is before start line {start_line_posix} in file {log_file_path}. Skipping cut.")
+                return
+            elif start_line_posix == end_line_posix:
+                self.logger.warning(f"Start and end lines are the same ({start_line_posix}) in file {log_file_path}. Skipping cut.\n"
+                "It just means no logs found in the specified date range.\n")
+                return
+            elif end_line_posix == 0:
+                self.logger.error(f"End line not found in file {log_file_path}. Skipping cut.")
+                return
+            cut_lines = lines[start_line_posix:end_line_posix]
+            dest_file_path = os.path.join(self.dest_path, os.path.basename(log_file_path))
+            try:
+                if not os.path.exists(self.dest_path):
+                    os.makedirs(self.dest_path, exist_ok=True)
+            except OSError as e:
+                    self.logger.error(f"Error creating destination directory {self.dest_path}: {e}")
+            try:
+                with open(dest_file_path, "w") as dest_file:
+                    dest_file.writelines(cut_lines)
+            except OSError as e:
+                self.logger.error(f"Error writing to destination file {dest_file_path}: {e}")
+            self.logger.info(f"Cut log saved to: {dest_file_path}")
+        elif start_line_posix is None:
+            self.logger.warning(f"No start line found in log file: {log_file_path}")
+        elif end_line_posix is None:
+            self.logger.warning(f"No end line found in log file: {log_file_path}")
 
     def extract_date_from_line(self, line: str):
         """Extract a date from a log line and convert it to a POSIX timestamp.
@@ -133,7 +111,6 @@ class LogsCutter():
         Returns:
             int: The line number of the first line that matches the date criteria, or None if no matching line is found.
         """
-        line_number = 0
         for line in lines:
             date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
             if date_in_line:
@@ -153,9 +130,16 @@ class LogsCutter():
         Returns:
             int: The line number of the first line that matches the date criteria, or None if no matching line is found.
         """
+        line_number = 0
         for line in lines:
             date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
             if date_in_line:
                 if date_in_line >= self.to_date.timestamp():
                     self.logger.debug(f"Found end line: {line.strip()}")
-                    return lines.index(line)
+                    line_number = lines.index(line)
+                    break
+        # If no end line found, return the last line number. So, we include all lines till the end.
+        if line_number > 0:
+            return line_number
+        else:
+            return len(lines)

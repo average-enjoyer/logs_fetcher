@@ -1,4 +1,5 @@
 import logging
+import os
 from Config import Config
 from typing import cast
 from datetime import datetime, timedelta
@@ -6,7 +7,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Grid, Container, VerticalScroll
 from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button
 
-from LogCutter import LogsCutter
+from LogCutter import LogCutter
 
 
 class SSHSettings(Static):
@@ -62,8 +63,9 @@ class LogsFetcher(App):
                 yield Input(placeholder=self.from_time, classes="datetime_input", id="from_date", value=self.from_time, valid_empty=False)
                 yield Label("To date:", id="to_date_label")
                 yield Input(placeholder=self.to_time, classes="datetime_input", id="to_date", value=self.to_time, valid_empty=False)
-                yield Label("Slow mode:", id="slow_mode_label")
-                yield Switch(id="slow_mode", value=self.configs.get("slow_mode", False), animate=True)
+                # Implement if needed in the future
+                # yield Label("Slow mode:", id="slow_mode_label")
+                # yield Switch(id="slow_mode", value=self.configs.get("slow_mode", False), animate=True)
                 yield Label("Directories with logs:", id="log_files_label")
                 yield VerticalScroll(PathField(), id="path_fields")
                 yield Button("Add path", id="add_path", variant="success")
@@ -89,13 +91,34 @@ class LogsFetcher(App):
         log_files_input = [cast(Input, inp).value for inp in log_inputs]
         dest_path_input = self.query_one("#dest_path", Input)
 
-        logs_cutter = LogsCutter(
-            from_date=from_date_input.value,
-            to_date=to_date_input.value,
-            log_files=log_files_input,
-            dest_path=dest_path_input.value,
-        )
-        logs_cutter.cut_log()
+        logs_cutter = LogCutter(
+                    from_date=from_date_input.value,
+                    to_date=to_date_input.value,
+                    dest_path=dest_path_input.value,
+                )
+        if self.query_one("#copy_from_localhost", Switch).value is True:
+            # TODO: Refactor this
+            for log in log_files_input:
+                if os.path.exists(log):
+                    if os.path.isdir(log):
+                        self.logger.debug(f"Processing log directory: {log}")
+                        for logfile in os.listdir(log):
+                            log_path = os.path.join(log, logfile)
+                            if os.path.isfile(log_path):
+                                self.logger.debug(f"Processing log file: {log_path}")
+                                with open(log_path, "r") as log_file:
+                                    log_lines = log_file.readlines()
+                                    logs_cutter.cut_log(log_path, log_lines)
+                    elif os.path.isfile(log):
+                        self.logger.debug(f"Processing a single log file: {log}")
+                        with open(log, "r") as log_file:
+                            log_lines = log_file.readlines()
+                            logs_cutter.cut_log(log, log_lines)
+                else:
+                    self.logger.error(f"Log file or directory does not exist: {log}")
+        else:
+            self.logger.debug("Remote copy is being implemented...")
+
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Event handler called when a button is pressed."""
