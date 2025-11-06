@@ -63,3 +63,8 @@
     grid-rows: 2;
 }
 
+#loading_indicator {
+    column-span: 2;
+    grid-columns: 2;
+    display: none;
+}

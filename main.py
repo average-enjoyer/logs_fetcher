@@ -1,11 +1,12 @@
 import logging
 import os
+import asyncio
 from Config import Config
 from typing import cast
 from datetime import datetime, timedelta
 from textual.app import App, ComposeResult
 from textual.containers import Grid, Container, VerticalScroll
-from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button
+from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button, LoadingIndicator
 
 from LogCutter import LogCutter
 
@@ -19,9 +20,9 @@ class SSHSettings(Static):
 
         with Container(id="ssh_inputs_container"):
             yield Label("SSH Settings")
-            yield Input(placeholder="Host:port", id="host_ip", value=f"{self.ssh_settings.get('hostname', '')}:{self.ssh_settings.get('port', '')}", valid_empty=False)
+            yield Input(placeholder="Host:port", id="hostname", value=f"{self.ssh_settings.get('hostname', '')}:{self.ssh_settings.get('port', '')}", valid_empty=False)
             yield Input(placeholder="Username", id="username", value=self.ssh_settings.get("username", ""), valid_empty=False)
-            yield Input(placeholder="Password", password=True, value=self.ssh_settings.get("password", ""), id="password", valid_empty=False)
+            yield Input(placeholder="Password", id="password", password=True, value=self.ssh_settings.get("password", ""), valid_empty=False)
 
     def on_mount(self) -> None:
         container = self.query_one("#ssh_inputs_container", Container)
@@ -74,6 +75,7 @@ class LogsFetcher(App):
                 yield PathField(id="dest_path_field")
             yield SSHSettings(id="ssh_settings", classes="panel")
             yield Button("COPY", id="copy_btn", variant="primary")
+            yield LoadingIndicator(id="loading_indicator")
 
 
     def action_add_path(self) -> None:
@@ -82,8 +84,13 @@ class LogsFetcher(App):
         self.query_one("#path_fields").mount(new_path)
         new_path.scroll_visible()
 
-    def action_copy(self) -> None:
-        """An action to start copying logs."""
+    async def action_copy(self) -> None:
+        """An async action to start copying logs without blocking the UI."""
+        loading_indicator = self.query_one("#loading_indicator", LoadingIndicator)
+        # show indicator and yield control so the UI can update
+        loading_indicator.display = True
+        await asyncio.sleep(0)
+
         from_date_input = self.query_one("#from_date", Input)
         to_date_input = self.query_one("#to_date", Input)
         # Query for inputs and cast each result to Input so Pylance knows about `.value`
@@ -96,7 +103,37 @@ class LogsFetcher(App):
                     to_date=to_date_input.value,
                     dest_path=dest_path_input.value,
                 )
-        if self.query_one("#copy_from_localhost", Switch).value is True:
+
+        # gather ssh info (may be unused for local copy)
+        hostname_port = self.query_one("#hostname", Input).value
+        hostname = hostname_port.split(":")[0]
+        port = 22
+        try:
+            if hostname_port.split(":")[1]:
+                port = int(hostname_port.split(":")[1])
+        except Exception:
+            port = 22
+        username = self.query_one("#username", Input).value
+        password = self.query_one("#password", Input).value
+
+        # run the blocking copy code in a thread so the UI can continue to animate
+        await asyncio.to_thread(
+            self._copy_sync,
+            logs_cutter,
+            log_files_input,
+            self.query_one("#copy_from_localhost", Switch).value,
+            hostname,
+            port,
+            username,
+            password,
+        )
+
+        loading_indicator.display = False
+
+    def _copy_sync(self, logs_cutter: LogCutter, log_files_input: list[str], copy_from_local: bool, hostname: str, port: int, username: str, password: str) -> None:
+        """Blocking copy logic moved to a sync helper so it can be run in a thread."""
+        # This is the same logic as before but running in a background thread.
+        if copy_from_local is True:
             # TODO: Refactor this
             for log in log_files_input:
                 if os.path.exists(log):
@@ -117,7 +154,8 @@ class LogsFetcher(App):
                 else:
                     self.logger.error(f"Log file or directory does not exist: {log}")
         else:
-            self.logger.debug("Remote copy is being implemented...")
+            self.logger.debug(f"hostname = {hostname}, port = {port}, username = {username}, password = {password}")
+            # remote_lc = RemoteLogCutter(hostname=hostname, username=username, password=password, port=port)
 
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -125,7 +163,8 @@ class LogsFetcher(App):
         if event.button.id == "add_path":
             self.action_add_path()
         if event.button.id == "copy_btn":
-            self.action_copy()
+            # schedule the async action so the button handler doesn't block
+            asyncio.create_task(self.action_copy())
     
     def on_switch_changed(self, event: Switch.Changed) -> None:
         """Called when the switch is toggled."""
@@ -141,7 +180,7 @@ if __name__ == "__main__":
     configs = Config().configs
 
     logging.basicConfig(
-        level=configs.get(f"debug_level", "WARNING"),  # Logging levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+        level=configs.get("debug_level", "WARNING"),  # Logging levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
         filename=configs.get("logs_fetcher_log_file_path", "logs/app.log"),
         filemode="a",         # "w" overwrite, "a" append
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
