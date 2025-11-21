@@ -9,6 +9,7 @@ from textual.containers import Grid, Container, VerticalScroll
 from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button, LoadingIndicator
 
 from LogCutter import LogCutter
+from RemoteLogCutter import RemoteLogCutter
 
 
 class SSHSettings(Static):
@@ -98,12 +99,6 @@ class LogsFetcher(App):
         log_files_input = [cast(Input, inp).value for inp in log_inputs]
         dest_path_input = self.query_one("#dest_path", Input)
 
-        logs_cutter = LogCutter(
-                    from_date=from_date_input.value,
-                    to_date=to_date_input.value,
-                    dest_path=dest_path_input.value,
-                )
-
         # gather ssh info (may be unused for local copy)
         hostname_port = self.query_one("#hostname", Input).value
         hostname = hostname_port.split(":")[0]
@@ -119,7 +114,9 @@ class LogsFetcher(App):
         # run the blocking copy code in a thread so the UI can continue to animate
         await asyncio.to_thread(
             self._copy_sync,
-            logs_cutter,
+            from_date_input.value,
+            to_date_input.value,
+            dest_path_input.value,
             log_files_input,
             self.query_one("#copy_from_localhost", Switch).value,
             hostname,
@@ -130,10 +127,15 @@ class LogsFetcher(App):
 
         loading_indicator.display = False
 
-    def _copy_sync(self, logs_cutter: LogCutter, log_files_input: list[str], copy_from_local: bool, hostname: str, port: int, username: str, password: str) -> None:
+    def _copy_sync(self, from_date, to_date, dest_path, log_files_input: list[str], copy_from_local: bool, hostname: str, port: int, username: str, password: str) -> None:
         """Blocking copy logic moved to a sync helper so it can be run in a thread."""
         # This is the same logic as before but running in a background thread.
         if copy_from_local is True:
+            logs_cutter = LogCutter(
+            from_date=from_date,
+            to_date=to_date,
+            dest_path=dest_path,
+            )
             # TODO: Refactor this
             for log in log_files_input:
                 if os.path.exists(log):
@@ -155,7 +157,16 @@ class LogsFetcher(App):
                     self.logger.error(f"Log file or directory does not exist: {log}")
         else:
             self.logger.debug(f"hostname = {hostname}, port = {port}, username = {username}, password = {password}")
-            # remote_lc = RemoteLogCutter(hostname=hostname, username=username, password=password, port=port)
+            remote_lc = RemoteLogCutter(
+                from_date=from_date,
+                to_date=to_date,
+                dest_path=dest_path,
+                hostname=hostname,
+                username=username,
+                password=password,
+                port=port,
+            )
+            remote_lc.cut_logs(requested_log_file_paths=log_files_input)
 
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
