@@ -4,7 +4,7 @@ import stat
 import logging # debug level is set in main.py
 import os
 import subprocess
-
+import threading
 
 class RemoteLogCutter():
     """A LogCutter subclass that fetches logs from a remote server via SSH before cutting them."""
@@ -53,7 +53,6 @@ class RemoteLogCutter():
 
         # Get list of files to fetch
         for log_file_path in requested_log_file_paths:
-            print(f'log_file_path="{log_file_path}"')
             # Check if user chooses directory with files to cut
             try:
                 file_attr = sftp_client.stat(log_file_path)
@@ -67,8 +66,6 @@ class RemoteLogCutter():
                         full_path = f"{log_file_path}/{log_file}"
                         # We take only files
                         if not stat.S_ISDIR(sftp_client.stat(full_path).st_mode):
-                            print(f'full_path="{full_path}"')
-                            print(f"wqerty={log_file}")
                             files_to_fetch.append(full_path)
                             sftp_client.get(remotepath=full_path, localpath=f"{self.tmp_dir}/{log_file}", max_concurrent_prefetch_requests=64)
             # If user chooses a file to cut
@@ -76,8 +73,8 @@ class RemoteLogCutter():
                 files_to_fetch.append(log_file_path)
         return files_to_fetch
 
-    def copy_log_files(self, file_paths: list[str]):
-        """ Download log files from the remote server via rsync.
+    def copy_log_files(self, file_path: str):
+        """ Download log file from the remote server via rsync.
         Args:
             file_paths (list[str]): List of log file paths on the remote server.
         Returns:
@@ -89,8 +86,7 @@ class RemoteLogCutter():
         "-e", "ssh -o StrictHostKeyChecking=no"
         ]
         # Add remote file paths
-        for f in file_paths:
-            cmd.append(f"{self.username}@{self.hostname}:{f}")
+        cmd.append(f"{self.username}@{self.hostname}:{file_path}")
 
         # Destination directory (local)
         cmd.append(self.tmp_dir)
@@ -115,22 +111,33 @@ class RemoteLogCutter():
         """
         # Get list of log files to fetch
         files_to_fetch = self.get_log_list(requested_log_file_paths)
-
-        # Download log files via rsync
-        self.copy_log_files(files_to_fetch)
+        self.logger.error(f"Files to fetch: {files_to_fetch}")
 
         # Use LogCutter to cut the fetched log files
         log_cutter = LogCutter(from_date=self.from_date, to_date=self.to_date, dest_path=self.dest_path)
+
+        treads = []
+
         for log_file in files_to_fetch:
+            thread = threading.Thread(target=self._cut_async, args=(log_cutter, log_file))
+            treads.append(thread)
+            thread.start()
+
+        for thread in treads:
+            thread.join()
+
+        self.remove_temp_files()
+
+    def _cut_async(self, log_cutter, log_file) -> None:
+            # Download log file via rsync
+            self.copy_log_files(log_file)
             local_log_path = os.path.join("./tmp", os.path.basename(log_file))
-            print(f"local_log_path={local_log_path}")
             try:
                 with open(local_log_path, "r") as log_file_handle:
                     log_lines = log_file_handle.readlines()
                     log_cutter.cut_log(local_log_path, log_lines)
             except OSError as e:
                 self.logger.error(f"Error opening local log file {local_log_path}: {e}")
-        self.remove_temp_files()
 
     def remove_temp_files(self):
         """Remove temporary files and directory used for storing fetched logs."""
