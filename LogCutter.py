@@ -98,12 +98,62 @@ class LogCutter():
                     self.logger.error(f"Error parsing date string '{date_str}': {e}")
         return None
 
+    def is_line_with_timestamp(self, line: str) -> bool:
+        """Check if a log line contains a valid timestamp.
+
+        Args:
+            line (str): A single line from a log file.
+        Returns:
+            bool: True if the line contains a valid timestamp, False otherwise.
+        """
+        date_in_line = self.extract_date_from_line(line)
+        return date_in_line is not None
+
+    def find_line_by_timestamp(self, lines: list[str]) -> int:
+        """Find a line in the log that matches or exceeds the from_date using (partially) binary search.
+
+        First, it performs binary search for efficiency. Then when the range is small (300), it switches to linear search, because not all lines have timestamps.
+        So, it narrows down the line search range first with binary search, then does linear
+        Args:
+            lines (list[str]): List of log lines to search through.
+        Returns:
+            int: The line number of the line that matches the date criteria, or -1 if no matching line is found.
+        """
+        leftmost_index = 0
+        rightmost_index = len(lines) - 1
+        # Try binary search first for efficiency, but stop when range is small (300), because not all lines have timestamps
+        while leftmost_index <= rightmost_index:
+            if rightmost_index - leftmost_index > 300:
+                mid = (leftmost_index + rightmost_index) // 2
+                while not self.is_line_with_timestamp(lines[mid]):
+                    mid += 1
+                    if mid > rightmost_index:
+                        return -1
+                date_in_line = self.extract_date_from_line(lines[mid]) # returns POSIX timestamp or None
+                if date_in_line:
+                    if date_in_line == self.from_date.timestamp():
+                        return mid
+                    elif date_in_line < self.from_date.timestamp():
+                        leftmost_index = mid + 1
+                    else:
+                        rightmost_index = mid - 1
+            else:
+                break
+        # Linear search in the narrowed range
+        for line in lines[leftmost_index:rightmost_index - 1]:
+            date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
+            if date_in_line:
+                if date_in_line >= self.from_date.timestamp():
+                    self.logger.debug(f"Found start line: {line.strip()}")
+                    return lines.index(line)
+        return -1
+
     # find_start_line and find_end_line are practically identical; consider refactoring with optimization
     def find_start_line(self, lines: list[str]) -> int:
         """Find the first line in the log that matches or exceeds the from_date.
 
-        Iterates through log lines sequentially and returns the number of the first line whose
-        timestamp is greater than or equal to the configured from_date.
+        First, it performs binary search for efficiency. Then when the range is small (300), it switches to linear search, because not all lines have timestamps.
+        So, it narrows down the line search range first with binary search, then does linear search in that range.
 
         Args:
             lines (list[str]): List of log lines to search through.
@@ -111,18 +161,23 @@ class LogCutter():
         Returns:
             int: The line number of the first line that matches the date criteria, or None if no matching line is found.
         """
-        for line in lines:
-            date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
-            if date_in_line:
-                if date_in_line >= self.from_date.timestamp():
-                    self.logger.debug(f"Found start line: {line.strip()}")
-                    return lines.index(line)
+        start_line_number = self.find_line_by_timestamp(lines)
+        if start_line_number != -1:
+            self.logger.debug(f"Found start line at index: {start_line_number}")
+            return start_line_number
+        else:
+            self.logger.debug("No start line found.")
+            if len(lines) > 0:
+                first_line_date = self.extract_date_from_line(lines[0])
+                if first_line_date and first_line_date > self.from_date.timestamp():
+                    self.logger.debug("All log lines are after the from_date. Returning line at index 0.")
+                    return 0
 
     def find_end_line(self, lines: list[str]) -> int:
         """Find the first line in the log that matches or exceeds the to_date.
 
-        Iterates through log lines sequentially and returns the number of the first line whose
-        timestamp is greater than or equal to the configured to_date.
+        First, it performs binary search for efficiency. Then when the range is small, it switches to linear search, because not all lines have timestamps.
+        So, it narrows down the line search range first with binary search, then does linear search in that range.
 
         Args:
             lines (list[str]): List of log lines to search through.
@@ -131,7 +186,29 @@ class LogCutter():
             int: The line number of the first line that matches the date criteria, or None if no matching line is found.
         """
         line_number = 0
-        for line in lines:
+
+        leftmost_index = 0
+        rightmost_index = len(lines) - 1
+        # Try binary search first for efficiency, but stop when range is small (300), because not all lines have timestamps
+        while leftmost_index <= rightmost_index:
+            if rightmost_index - leftmost_index > 300:
+                mid = (leftmost_index + rightmost_index) // 2
+                while not self.is_line_with_timestamp(lines[mid]):
+                    mid += 1
+                    if mid > rightmost_index:
+                        return -1
+                date_in_line = self.extract_date_from_line(lines[mid]) # returns POSIX timestamp or None
+                if date_in_line:
+                    if date_in_line == self.to_date.timestamp():
+                        return mid
+                    elif date_in_line < self.to_date.timestamp():
+                        leftmost_index = mid + 1
+                    else:
+                        rightmost_index = mid - 1
+            else:
+                break
+        # Linear search in the narrowed range
+        for line in lines[leftmost_index:rightmost_index - 1]:
             date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
             if date_in_line:
                 if date_in_line >= self.to_date.timestamp():
