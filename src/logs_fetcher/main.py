@@ -46,7 +46,7 @@ class LogsFetcher(App):
         ("a", "add_path", "Add path"),
         ]
 
-    CSS_PATH = "logs_fetcher.tcss"
+    CSS_PATH = "../tcss/logs_fetcher.tcss"
 
     from_time = (datetime.now() - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S")
     to_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

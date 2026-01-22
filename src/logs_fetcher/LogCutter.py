@@ -30,6 +30,7 @@ class LogCutter():
         end_line_posix = 0.0 # POSIX timestamp of the last line to include
         start_line_posix = self.find_start_line(lines)
         end_line_posix = self.find_end_line(lines)
+        self.logger.debug(f"start_line_posix = {start_line_posix}, end_line_posix = {end_line_posix}")
         if start_line_posix is not None and end_line_posix is not None:
             self.logger.debug(f"Cutting log file from line {start_line_posix} to {end_line_posix}")
             if end_line_posix < start_line_posix:
@@ -112,7 +113,7 @@ class LogCutter():
     def find_line_by_timestamp(self, lines: list[str]) -> int:
         """Find a line in the log that matches or exceeds the from_date using (partially) binary search.
 
-        First, it performs binary search for efficiency. Then when the range is small (300), it switches to linear search, because not all lines have timestamps.
+        First, it performs binary search for efficiency. Then when the range is small (900), it switches to linear search, because not all lines have timestamps.
         So, it narrows down the line search range first with binary search, then does linear
         Args:
             lines (list[str]): List of log lines to search through.
@@ -121,9 +122,9 @@ class LogCutter():
         """
         leftmost_index = 0
         rightmost_index = len(lines) - 1
-        # Try binary search first for efficiency, but stop when range is small (300), because not all lines have timestamps
+        # Try binary search first for efficiency, but stop when range is small (900), because not all lines have timestamps
         while leftmost_index <= rightmost_index:
-            if rightmost_index - leftmost_index > 300:
+            if rightmost_index - leftmost_index > 900:
                 mid = (leftmost_index + rightmost_index) // 2
                 while not self.is_line_with_timestamp(lines[mid]):
                     mid += 1
@@ -140,6 +141,7 @@ class LogCutter():
             else:
                 break
         # Linear search in the narrowed range
+        self.logger.debug(f"leftmost_index = {leftmost_index}, rightmost_index = {rightmost_index}")
         for line in lines[leftmost_index:rightmost_index - 1]:
             date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
             if date_in_line:
@@ -152,8 +154,9 @@ class LogCutter():
     def find_start_line(self, lines: list[str]) -> int:
         """Find the first line in the log that matches or exceeds the from_date.
 
-        First, it performs binary search for efficiency. Then when the range is small (300), it switches to linear search, because not all lines have timestamps.
+        First, it performs binary search for efficiency. Then when the range is small (900), it switches to linear search, because not all lines have timestamps.
         So, it narrows down the line search range first with binary search, then does linear search in that range.
+        This approach may pose some bugs in some corner cases.
 
         Args:
             lines (list[str]): List of log lines to search through.
@@ -178,6 +181,7 @@ class LogCutter():
 
         First, it performs binary search for efficiency. Then when the range is small, it switches to linear search, because not all lines have timestamps.
         So, it narrows down the line search range first with binary search, then does linear search in that range.
+        This approach may pose some bugs in some corner cases.
 
         Args:
             lines (list[str]): List of log lines to search through.
@@ -189,9 +193,9 @@ class LogCutter():
 
         leftmost_index = 0
         rightmost_index = len(lines) - 1
-        # Try binary search first for efficiency, but stop when range is small (300), because not all lines have timestamps
+        # Try binary search first for efficiency, but stop when range is small (900), because not all lines have timestamps
         while leftmost_index <= rightmost_index:
-            if rightmost_index - leftmost_index > 300:
+            if rightmost_index - leftmost_index > 900:
                 mid = (leftmost_index + rightmost_index) // 2
                 while not self.is_line_with_timestamp(lines[mid]):
                     mid += 1
@@ -208,6 +212,7 @@ class LogCutter():
             else:
                 break
         # Linear search in the narrowed range
+        self.logger.debug(f"leftmost_index = {leftmost_index}, rightmost_index = {rightmost_index}")
         for line in lines[leftmost_index:rightmost_index - 1]:
             date_in_line = self.extract_date_from_line(line) # returns POSIX timestamp or None
             if date_in_line:

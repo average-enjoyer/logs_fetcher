@@ -9,6 +9,6 @@ class Config():
 
     def load_config(self) -> dict:
         """Load configuration settings."""
-        with open("settings.json", "r") as f:
+        with open("src/logs_fetcher/settings.json", "r") as f:
             configs = json.load(f)
         return configs
