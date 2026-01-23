@@ -2,7 +2,7 @@
     "slow_mode": false,
     "copy_from_local": true,
     "debug_level": "WARNING",
-    "logs_fetcher_log_file_path": "logs/app.log",
+    "log_harvester_log_file_path": "harvester_logs/app.log",
     "log_file_path": "examples/Linux_2k.log",
     "dest_path": "copied_logs/",
     "ssh_settings" :{

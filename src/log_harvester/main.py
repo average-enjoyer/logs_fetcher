@@ -46,7 +46,7 @@ class LogsFetcher(App):
         ("a", "add_path", "Add path"),
         ]
 
-    CSS_PATH = "../tcss/logs_fetcher.tcss"
+    CSS_PATH = "../tcss/log_harvester.tcss"
 
     from_time = (datetime.now() - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S")
     to_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -68,7 +68,7 @@ class LogsFetcher(App):
                 # Implement if needed in the future
                 # yield Label("Slow mode:", id="slow_mode_label")
                 # yield Switch(id="slow_mode", value=self.configs.get("slow_mode", False), animate=True)
-                yield Label("Directories with logs:", id="log_files_label")
+                yield Label("Log directories or log files:", id="log_files_label")
                 yield VerticalScroll(PathField(), id="path_fields")
                 yield Button("Add path", id="add_path", variant="success")
                 yield Label("") # Spacer
@@ -188,11 +188,11 @@ class LogsFetcher(App):
 
 
 if __name__ == "__main__":
+    os.makedirs("harvester_logs", exist_ok=True) # Ensure log directory exists
     configs = Config().configs
-
     logging.basicConfig(
         level=configs.get("debug_level", "WARNING"),  # Logging levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
-        filename=configs.get("logs_fetcher_log_file_path", "logs/app.log"),
+        filename=configs.get("log_harvester_log_file_path", "harvester_logs/app.log"),
         filemode="a",         # "w" overwrite, "a" append
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
