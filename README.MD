@@ -47,7 +47,10 @@ Then, [fill out the rest of the fields as for the local machine log harvesting ]
 
 If you are a real log-gigachad 💪🦄💪, you may want to save the settings for reuse.<br>
 LogHarvester has this feature.<br>
-To do that, you may fill out the default settings in `src\log_harvester\settings.json`.<br>
+To do that, you may fill out the default settings in
+* `C:\Users\<Username>\AppData\Roaming\log_harvester\settings.json` - if you run `log_harvester.exe` on Windows (**Note: The settings file in that directory will appear only after the first launch of log_harvester.exe**);
+* `src\log_harvester\settings.json` - if you run code.<br>
+
 So, they'll be loaded each time you start the LogHarvester!<br>
 
 <details>
@@ -89,7 +92,7 @@ Download [log_harvester.exe](https://github.com/average-enjoyer/LogHarvester/rel
 ## How to run code
 
 The project is extremely simple.
-Just recreate the environment after cloning and run `main.py`
+Just recreate the environment after cloning and run `main.py` *(Python3.12+)*
 ```
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
