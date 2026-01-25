@@ -1,6 +1,8 @@
 import logging
 import os
 import asyncio
+
+from pathlib import Path
 from Config import Config
 from typing import cast
 from datetime import datetime, timedelta
@@ -46,7 +48,7 @@ class LogsFetcher(App):
         ("a", "add_path", "Add path"),
         ]
 
-    CSS_PATH = "../tcss/log_harvester.tcss"
+    CSS_PATH = Path(__file__).parent / "log_harvester.tcss"
 
     from_time = (datetime.now() - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S")
     to_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -51,7 +51,7 @@ To do that, you may fill out the default settings in `src\log_harvester\settings
 So, they'll be loaded each time you start the LogHarvester!<br>
 
 <details>
-  <summary>Static settings</summary>]
+  <summary>Static settings</summary>
 
 ```
 {
@@ -93,6 +93,29 @@ source venv/bin/activate  # or venv\Scripts\activate on Windows
 python3 -m pip install -r requirements.txt
 python3 ./main.py
 ```
+<details>
+  <summary>Build executable file</summary>
+
+Windows:
+```
+pyinstaller \
+  --onefile \
+  --name log_harvester \
+  --add-data "src/log_harvester/default_settings.json;." \
+  --add-data "src/log_harvester/log_harvester.tcss;." \
+  src/log_harvester/main.py
+```
+
+Linux:
+```
+pyinstaller \
+  --onefile \
+  --name log_harvester \
+  --add-data "src/log_harvester/default_settings.json:." \
+  --add-data "src/log_harvester/log_harvester.tcss:." \
+  src/log_harvester/main.py
+```
+</details>
 
 ## Known issues (WIP)
 * *In case something goes wrong, it doesn't let you know, but only prints errors in the app.log.*
