@@ -55,7 +55,7 @@
 
 #path_fields {
     height: auto;
-    max-height: 6;
+    max-height: 8;
     border: round $primary;
     margin-bottom: 1;
 }
