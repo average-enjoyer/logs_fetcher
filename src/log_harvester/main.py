@@ -11,7 +11,7 @@ from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button, LoadingIndicator
 
 from LogCutter import LogCutter
-from RemoteLogCutter import RemoteLogCutter
+from RemoteLogCutter import RemoteLogCutter, SSH_CONNECT_TIMEOUT
 
 
 class NotifyHandler(logging.Handler):
@@ -214,6 +214,10 @@ class LogsFetcher(App):
                     self.logger.error(f"Log file or directory does not exist: {log}")
         else:
             self.logger.debug(f"hostname = {hostname}, port = {port}, username = {username}, password = {password}")
+            self.notify(
+                f"Connecting to {hostname}:{port} (timeout {SSH_CONNECT_TIMEOUT}s)...",
+                timeout=SSH_CONNECT_TIMEOUT + 2,
+            )
             remote_lc = RemoteLogCutter(
                 from_date=from_date,
                 to_date=to_date,
@@ -222,6 +226,7 @@ class LogsFetcher(App):
                 username=username,
                 password=password,
                 port=port,
+                timeout=SSH_CONNECT_TIMEOUT,
             )
             remote_lc.cut_logs(requested_log_file_paths=log_files_input)
 

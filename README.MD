@@ -128,7 +128,6 @@ pyinstaller \
 </details>
 
 ## Known issues (WIP)
-* *In case something goes wrong, it doesn't let you know, but only prints errors in the app.log.*
 * *The "slow mode" is not implemented yet. It should reduce the resource consumption when user works with huge logs*
 
 ## Further improvements (Wishlist)

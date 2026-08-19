@@ -6,25 +6,44 @@ import os
 import subprocess
 import threading
 
+# Paramiko's connect() has no timeout by default, so an unreachable host (bad
+# hostname, dropped packets, closed port with a silent firewall, etc.) can
+# hang indefinitely. This bounds the socket connect, SSH banner exchange, and
+# authentication phases.
+SSH_CONNECT_TIMEOUT = 10
+
 class RemoteLogCutter():
     """A LogCutter subclass that fetches logs from a remote server via SSH before cutting them."""
 
-    def __init__(self, from_date: str, to_date: str, dest_path: str, hostname: str, username: str, password: str, port:int=22):
+    def __init__(self, from_date: str, to_date: str, dest_path: str, hostname: str, username: str, password: str, port:int=22, timeout: float = SSH_CONNECT_TIMEOUT):
         self.hostname = hostname
         self.username = username
         self.password = password
         self.port = port
+        self.timeout = timeout
         self.from_date = from_date
         self.to_date = to_date
         self.dest_path = dest_path
+        self.tmp_dir = "./tmp"
+        self.logger = logging.getLogger("RemoteLogCutter")
+
+        self.logger.info(f"Connecting to {hostname}:{port} (timeout {timeout}s)...")
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh_client.connect(hostname=hostname, username=username, password=password, port=port)
+        try:
+            ssh_client.connect(
+                hostname=hostname,
+                username=username,
+                password=password,
+                port=port,
+                timeout=timeout,
+                banner_timeout=timeout,
+                auth_timeout=timeout,
+            )
+        except Exception as e:
+            raise ConnectionError(f"Could not connect to {hostname}:{port} within {timeout}s: {e}") from e
         self.ssh_client = ssh_client
-        self.tmp_dir = "./tmp"
-
-        self.logger = logging.getLogger("RemoteLogCutter")
-        self.trans = paramiko.Transport((hostname, port), default_window_size=2147483647)
+        self.logger.info(f"Connected to {hostname}:{port}.")
 
     def get_log_list(self, requested_log_file_paths: list[str]):
         """
@@ -83,7 +102,7 @@ class RemoteLogCutter():
         cmd = [
         "sshpass", "-p", self.password,
         "rsync", "-az",
-        "-e", "ssh -o StrictHostKeyChecking=no"
+        "-e", f"ssh -o StrictHostKeyChecking=no -o ConnectTimeout={int(self.timeout)}"
         ]
         # Add remote file paths
         cmd.append(f"{self.username}@{self.hostname}:{file_path}")
@@ -91,8 +110,12 @@ class RemoteLogCutter():
         # Destination directory (local)
         cmd.append(self.tmp_dir)
         try:
-            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Backstop timeout in case the transfer itself stalls after connecting.
+            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=self.timeout + 30)
             self.logger.debug(f"rsync succeeded: {result.stdout}")
+        except subprocess.TimeoutExpired as e:
+            self.logger.error(f"rsync timed out copying {file_path}: {e}")
+            return False
         except subprocess.CalledProcessError as e:
             self.logger.error(f"rsync failed (rc={e.returncode}): {e.stderr}")
             return False
