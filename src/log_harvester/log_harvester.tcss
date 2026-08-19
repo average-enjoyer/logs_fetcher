@@ -1,70 +1,85 @@
 #main-container {
     height: 100%;
     width: 100%;
-    grid-size: 2;  /* two columns */
-    grid-rows: 80% 10%;
-    grid-columns: 75% 25%;
 }
 
-#dates {
-    grid-size: 2;  /* two columns */
-    grid-columns: 20% 80%;
-}
-
-#from_date_label {
-    grid-columns: 2;
-    grid-rows: 1;
-}
-
-#to_date_label {
-    grid-columns: 2;
-    grid-rows: 2;
-}
-
-.datetime_input {
-    width: 100%;
-}
-
-#ssh_settings {
-    column-span: 3;
-}
-
-#slow_mode_label {
-    /* content-align: center middle; */
-}
-
-#add_path_btn{
-    /* column: 2; */
-}
-
-#copy_btn {
-    column-span: 1;
-    grid-columns: 2;
-    color: rgba(12, 30, 190, 1);
+#panels {
+    height: 1fr;
 }
 
 .panel {
     height: 100%;
-    border: round rgba(12, 30, 190, 1);
+    border: round $primary;
+    background: $panel;
+    padding: 1 2;
+    margin: 1;
+    overflow-y: auto;
+}
+
+#dates {
+    width: 3fr;
+}
+
+#ssh_settings {
+    width: 2fr;
+}
+
+.hint_text {
+    color: $text-muted;
+    margin-bottom: 1;
+    width: 1fr;
+}
+
+.field_row {
+    height: auto;
+    margin-bottom: 1;
+    align: left middle;
+}
+
+.field_label {
+    width: 32;
+    height: 100%;
+    content-align: right middle;
+    padding-right: 1;
+    color: $text-muted;
+}
+
+.field_value {
+    width: 1fr;
+    height: auto;
+}
+
+.datetime_input {
+    width: 1fr;
+}
+
+#path_fields {
+    height: auto;
+    max-height: 6;
+    border: round $primary;
+    margin-bottom: 1;
 }
 
 #ssh_inputs_container {
-    border: round rgb(101, 39, 202);
+    border: round $accent;
     display: none;
+    padding: 1 2;
+    margin-top: 1;
 }
 
-#copy_from_localhost_label {
-    grid-columns: 2;
-    grid-rows: 1;
+#action_bar {
+    height: auto;
+    align: center middle;
+    padding: 1 2;
+    background: $panel;
+    border-top: heavy $primary;
 }
 
-#copy_from_localhost {
-    grid-columns: 2;
-    grid-rows: 2;
+#copy_btn {
+    width: 30;
 }
 
 #loading_indicator {
-    column-span: 2;
-    grid-columns: 2;
+    width: 1fr;
     display: none;
 }

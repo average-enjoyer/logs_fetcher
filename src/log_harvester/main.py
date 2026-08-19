@@ -7,7 +7,7 @@ from Config import Config
 from typing import cast
 from datetime import datetime, timedelta
 from textual.app import App, ComposeResult
-from textual.containers import Grid, Container, VerticalScroll
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Footer, Header, Static, Label, Input, Switch, Button, LoadingIndicator
 
 from LogCutter import LogCutter
@@ -18,8 +18,13 @@ class SSHSettings(Static):
     configs = Config().configs
     ssh_settings = configs.get("ssh_settings", {})
     def compose(self) -> ComposeResult:
-        yield Label("Copy from localhost:", id="copy_from_localhost_label")
-        yield Switch(id="copy_from_localhost", value=self.configs.get("copy_from_local", True), animate=True)
+        with Horizontal(classes="field_row"):
+            yield Label("Copy from localhost:", id="copy_from_localhost_label", classes="field_label")
+            yield Switch(id="copy_from_localhost", value=self.configs.get("copy_from_local", True), animate=True)
+        yield Label(
+            "Toggle off to copy logs from a remote host over SSH instead of the local filesystem.",
+            classes="hint_text",
+        )
 
         with Container(id="ssh_inputs_container"):
             yield Label("SSH Settings")
@@ -54,6 +59,13 @@ class LogsFetcher(App):
     to_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     configs = None
 
+    def on_mount(self) -> None:
+        self.theme = "gruvbox"
+        self.title = "Log Harvester"
+        self.sub_title = "Fetch and archive logs"
+        self.query_one("#dates").border_title = "Date Range"
+        self.query_one("#ssh_settings").border_title = "Copy Settings"
+
     def compose(self) -> ComposeResult:
         self.logger.info("The app is composing the layout.")
         self.configs = Config().configs
@@ -61,24 +73,31 @@ class LogsFetcher(App):
         logging.debug(f"Destination path from config: {self.configs.get('dest_path')}")
         yield Header()
         yield Footer()
-        with Grid(id="main-container"):
-            with Grid(id="dates", classes="panel"):
-                yield Label("From date:", id="from_date_label")
-                yield Input(placeholder=self.from_time, classes="datetime_input", id="from_date", value=self.from_time, valid_empty=False)
-                yield Label("To date:", id="to_date_label")
-                yield Input(placeholder=self.to_time, classes="datetime_input", id="to_date", value=self.to_time, valid_empty=False)
-                # Implement if needed in the future
-                # yield Label("Slow mode:", id="slow_mode_label")
-                # yield Switch(id="slow_mode", value=self.configs.get("slow_mode", False), animate=True)
-                yield Label("Log directories or log files:", id="log_files_label")
-                yield VerticalScroll(PathField(), id="path_fields")
-                yield Button("Add path", id="add_path", variant="success")
-                yield Label("") # Spacer
-                yield Label("Destination:", id="log_destination_label")
-                yield PathField(id="dest_path_field")
-            yield SSHSettings(id="ssh_settings", classes="panel")
-            yield Button("COPY", id="copy_btn", variant="primary")
-            yield LoadingIndicator(id="loading_indicator")
+        with Vertical(id="main-container"):
+            with Horizontal(id="panels"):
+                with Vertical(id="dates", classes="panel"):
+                    with Horizontal(classes="field_row"):
+                        yield Label("From date:", id="from_date_label", classes="field_label")
+                        yield Input(placeholder=self.from_time, classes="datetime_input", id="from_date", value=self.from_time, valid_empty=False)
+                    with Horizontal(classes="field_row"):
+                        yield Label("To date:", id="to_date_label", classes="field_label")
+                        yield Input(placeholder=self.to_time, classes="datetime_input", id="to_date", value=self.to_time, valid_empty=False)
+                    # Implement if needed in the future
+                    # yield Label("Slow mode:", id="slow_mode_label")
+                    # yield Switch(id="slow_mode", value=self.configs.get("slow_mode", False), animate=True)
+                    with Horizontal(classes="field_row"):
+                        yield Label("Log directories or log files:", id="log_files_label", classes="field_label")
+                        yield VerticalScroll(PathField(), id="path_fields")
+                    with Horizontal(classes="field_row"):
+                        yield Label("", classes="field_label")
+                        yield Button("Add path", id="add_path", variant="success")
+                    with Horizontal(classes="field_row"):
+                        yield Label("Destination:", id="log_destination_label", classes="field_label")
+                        yield PathField(id="dest_path_field", classes="field_value")
+                yield SSHSettings(id="ssh_settings", classes="panel")
+            with Horizontal(id="action_bar"):
+                yield Button("COPY", id="copy_btn", variant="primary")
+                yield LoadingIndicator(id="loading_indicator")
 
 
     def action_add_path(self) -> None:
