@@ -14,6 +14,31 @@ from LogCutter import LogCutter
 from RemoteLogCutter import RemoteLogCutter
 
 
+class NotifyHandler(logging.Handler):
+    """Forwards warning/error log records to in-app toast notifications.
+
+    Existing code across LogCutter/RemoteLogCutter only ever logs failures
+    (missing files, rsync errors, etc.) without raising, so without this the
+    user would only ever see them in app.log.
+    """
+
+    def __init__(self, app: "LogsFetcher"):
+        super().__init__(level=logging.WARNING)
+        self.app = app
+
+    def emit(self, record: logging.LogRecord) -> None:
+        severity = "error" if record.levelno >= logging.ERROR else "warning"
+        # Use the plain message (not self.format(record)): the file handler's
+        # formatter may attach a full traceback via exc_info, which is too
+        # long for a toast and already lives in app.log.
+        message = record.getMessage()
+        try:
+            # App.notify() is thread-safe, so this is fine to call from _copy_sync's worker thread too.
+            self.app.notify(message, severity=severity, timeout=10)
+        except Exception:
+            pass
+
+
 class SSHSettings(Static):
     configs = Config().configs
     ssh_settings = configs.get("ssh_settings", {})
@@ -65,6 +90,11 @@ class LogsFetcher(App):
         self.sub_title = "Fetch and archive logs"
         self.query_one("#dates").border_title = "Date Range"
         self.query_one("#ssh_settings").border_title = "Copy Settings"
+        self._notify_handler = NotifyHandler(self)
+        logging.getLogger().addHandler(self._notify_handler)
+
+    def on_unmount(self) -> None:
+        logging.getLogger().removeHandler(self._notify_handler)
 
     def compose(self) -> ComposeResult:
         self.logger.info("The app is composing the layout.")
@@ -133,20 +163,26 @@ class LogsFetcher(App):
         password = self.query_one("#password", Input).value
 
         # run the blocking copy code in a thread so the UI can continue to animate
-        await asyncio.to_thread(
-            self._copy_sync,
-            from_date_input.value,
-            to_date_input.value,
-            dest_path_input.value,
-            log_files_input,
-            self.query_one("#copy_from_localhost", Switch).value,
-            hostname,
-            port,
-            username,
-            password,
-        )
-
-        loading_indicator.display = False
+        try:
+            await asyncio.to_thread(
+                self._copy_sync,
+                from_date_input.value,
+                to_date_input.value,
+                dest_path_input.value,
+                log_files_input,
+                self.query_one("#copy_from_localhost", Switch).value,
+                hostname,
+                port,
+                username,
+                password,
+            )
+        except Exception as e:
+            # Full traceback goes to app.log; NotifyHandler turns this into a toast too.
+            self.logger.exception(f"Copy failed: {e}")
+        else:
+            self.notify("Copy completed.", severity="information", timeout=5)
+        finally:
+            loading_indicator.display = False
 
     def _copy_sync(self, from_date, to_date, dest_path, log_files_input: list[str], copy_from_local: bool, hostname: str, port: int, username: str, password: str) -> None:
         """Blocking copy logic moved to a sync helper so it can be run in a thread."""
