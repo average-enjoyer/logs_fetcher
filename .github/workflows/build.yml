@@ -65,14 +65,22 @@ jobs:
           nfpm package --config packaging/nfpm.yaml --packager deb --target dist/
           nfpm package --config packaging/nfpm.yaml --packager rpm --target dist/
 
-      - name: Upload .deb/.rpm packages
+      # Uploaded as two separate artifacts (rather than one zip with both)
+      # so a Debian/Ubuntu user testing a run only has to grab the .deb,
+      # not a bundle containing the .rpm too.
+      - name: Upload .deb package
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: log_harvester-packages
-          path: |
-            dist/*.deb
-            dist/*.rpm
+          name: log_harvester-deb
+          path: dist/*.deb
+
+      - name: Upload .rpm package
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: log_harvester-rpm
+          path: dist/*.rpm
 
   release:
     needs: build
