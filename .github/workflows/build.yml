@@ -1,0 +1,65 @@
+name: Build binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            data_sep: ":"
+          - os: windows-latest
+            data_sep: ";"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build binary
+        run: >
+          pyinstaller --onefile --name log_harvester
+          --add-data "src/log_harvester/default_settings.json${{ matrix.data_sep }}."
+          --add-data "src/log_harvester/log_harvester.tcss${{ matrix.data_sep }}."
+          src/log_harvester/main.py
+
+      # PyInstaller names the output "log_harvester" on Linux and
+      # "log_harvester.exe" on Windows, so this glob picks up whichever exists.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: log_harvester-${{ matrix.os }}
+          path: dist/log_harvester*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts into one directory
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
