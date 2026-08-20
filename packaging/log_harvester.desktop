@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Log Harvester
+Comment=Fetch and archive logs by date range
+Exec=/usr/bin/log_harvester
+Terminal=true
+Icon=utilities-terminal
+Categories=Utility;System;
