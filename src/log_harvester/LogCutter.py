@@ -61,6 +61,26 @@ class LogCutter():
         elif end_line_posix is None:
             self.logger.warning(f"No end line found in log file: {log_file_path}")
 
+    def cut_local_logs(self, requested_log_file_paths: list[str]) -> None:
+        """Cut every local log file found under the given paths (files or directories).
+
+        Args:
+            requested_log_file_paths (list[str]): List of local log file or directory paths.
+        """
+        for log in requested_log_file_paths:
+            if not os.path.exists(log):
+                self.logger.error(f"Log file or directory does not exist: {log}")
+                continue
+            if os.path.isdir(log):
+                for logfile in os.listdir(log):
+                    log_path = os.path.join(log, logfile)
+                    if os.path.isfile(log_path):
+                        with open(log_path, "r") as log_file:
+                            self.cut_log(log_path, log_file.readlines())
+            elif os.path.isfile(log):
+                with open(log, "r") as log_file:
+                    self.cut_log(log, log_file.readlines())
+
     def extract_date_from_line(self, line: str):
         """Extract a date from a log line and convert it to a POSIX timestamp.
 

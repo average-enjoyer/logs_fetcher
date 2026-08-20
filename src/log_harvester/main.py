@@ -193,25 +193,7 @@ class LogsFetcher(App):
             to_date=to_date,
             dest_path=dest_path,
             )
-            # TODO: Refactor this
-            for log in log_files_input:
-                if os.path.exists(log):
-                    if os.path.isdir(log):
-                        self.logger.debug(f"Processing log directory: {log}")
-                        for logfile in os.listdir(log):
-                            log_path = os.path.join(log, logfile)
-                            if os.path.isfile(log_path):
-                                self.logger.debug(f"Processing log file: {log_path}")
-                                with open(log_path, "r") as log_file:
-                                    log_lines = log_file.readlines()
-                                    logs_cutter.cut_log(log_path, log_lines)
-                    elif os.path.isfile(log):
-                        self.logger.debug(f"Processing a single log file: {log}")
-                        with open(log, "r") as log_file:
-                            log_lines = log_file.readlines()
-                            logs_cutter.cut_log(log, log_lines)
-                else:
-                    self.logger.error(f"Log file or directory does not exist: {log}")
+            logs_cutter.cut_local_logs(log_files_input)
         else:
             self.logger.debug(f"hostname = {hostname}, port = {port}, username = {username}, password = {password}")
             self.notify(
